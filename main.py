@@ -8,6 +8,7 @@ import pyperclip
 import keyboard
 import json
 import os
+from PIL import ImageGrab
 import pytesseract
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -38,13 +39,7 @@ def get_or_load_ball_coords():
 
     return coords
 
-from PIL import ImageGrab
-import pytesseract
-
-
-BALL_CHECK_BOX = (566, 720, 990, 842)
-
-import re
+BALL_CHECK_BOX = (540, 700, 1020, 860)  # Try widening and adjusting height
 
 def extract_ball_count(text, ball_type):
     # Clean the text to fix common OCR issues
@@ -71,29 +66,43 @@ def check_and_buy_balls():
     screenshot = ImageGrab.grab(bbox=BALL_CHECK_BOX)
     text = pytesseract.image_to_string(screenshot).lower()
 
-    # Clean up OCR text to improve matching
-    text = text.replace("\n", " ").replace(":", "").replace("|", "l")
+    # Clean OCR text
+    text = text.replace("\n", " ").replace(":", "").replace("|", "l").replace("ba11s", "balls").replace("ba1ls", "balls")
 
     print(f"[DEBUG] Ball Count OCR Text:\n{text}\n")
 
-    if extract_ball_count(text, "pokeballs") == 0:
-        print("No Pokéballs found. Buying 30...")
+    # Only proceed if ALL relevant keywords are found
+    keywords = ["pokeball", "greatball", "ultraball", "poke ball", "great ball", "ultra ball"]
+    if not any(k in text for k in keywords):
+        print("No ball-related keywords found. Skipping buy check.")
+        return
+
+    # Proceed with extraction
+    poke_count = extract_ball_count(text, "pokeballs")
+    great_count = extract_ball_count(text, "greatballs")
+    ultra_count = extract_ball_count(text, "ultraballs")
+
+    print(f"Counts - Pokeballs: {poke_count}, Greatballs: {great_count}, Ultraballs: {ultra_count}")
+
+    if "pokeball" in text and poke_count <= 5:
+        print("No Pokeballs found. Buying 30...")
         pyautogui.typewrite(";s b 1 30")
         pyautogui.press("enter")
         time.sleep(5)
 
-    if extract_ball_count(text, "greatballs") == 0:
-        print("No Great Balls found. Buying 20...")
+    if "greatball" in text and great_count <= 5:
+        print("No GreatBalls found. Buying 20...")
         pyautogui.typewrite(";s b 2 20")
         pyautogui.press("enter")
         time.sleep(5)
 
-    if extract_ball_count(text, "ultraballs") == 0:
-        print("No Ultra Balls found. Buying 10...")
+    if "ultraball" in text and ultra_count <= 5:
+        print("No UltraBalls found. Buying 10...")
         pyautogui.typewrite(";s b 3 10")
         pyautogui.press("enter")
         time.sleep(5)
-               
+
+  
 RARITY_BOX = (566, 415, 999, 852)
 
 def get_rarity_from_screen():
